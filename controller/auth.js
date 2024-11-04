@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {User} from '../model/user.js';
 import { OTP } from '../model/otp.js';
-import { sendMail } from '../config/emailcondig.js';
+import { sendMail,sendforgototp } from '../config/emailcondig.js';
 import { otpGeneratot } from '../config/otpgenerator.js';
 import {uploadonCloudinary} from '../config/cloudinary.js'
 import dotenv from 'dotenv';
@@ -50,7 +50,7 @@ export const register = async (req, res) => {
       profession = 'none',
       hourlyRate = 0 
     } = req.body;
-    console.log("hello",name,email,password,location,role,profession);
+    //console.log("hello",name,email,password,location,role,profession);
 
     const existingUser = await User.findOne({email});
 
@@ -236,13 +236,14 @@ export const logout = (req, res) => {
 
 export const initiateForgotPassword = async (req, res) => {
   const { email } = req.body;
-
+ // console.log(email);
   try {
     // Check if user exists
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({
+        status:false,
         message: 'No user found with this email address'
       });
     }
@@ -256,22 +257,18 @@ export const initiateForgotPassword = async (req, res) => {
     // Save OTP
     await OTP.create({
       email,
-      otp,
-      type: 'password_reset' // Adding type to differentiate from registration OTP
+      otp
     });
 
     // Store email in session for later verification
-    req.session.resetEmail = email;
 
     // Send OTP
-    await sendMail(
-      email,
-      otp,
-      'Password Reset OTP',
-      `Your OTP for password reset is: ${otp}. This OTP will expire in 10 minutes.`
-    );
-
+    await sendforgototp(email,otp);
+    req.session.tempuser ={
+      email
+    }
     res.status(200).json({
+      status:true,
       message: 'Password reset OTP has been sent to your email'
     });
 
@@ -286,8 +283,8 @@ export const initiateForgotPassword = async (req, res) => {
 
 export const verifyForgotPasswordOTP = async (req, res) => {
   const { otp } = req.body;
-  const email = req.session.resetEmail;
-
+  const email =  req.session.tempuser.email;
+  console.log(email,otp)
   if (!email) {
     return res.status(400).json({
       message: 'Password reset session expired. Please start over.'
@@ -297,8 +294,7 @@ export const verifyForgotPasswordOTP = async (req, res) => {
   try {
     const otpRecord = await OTP.findOne({
       email,
-      otp,
-      type: 'password_reset'
+      otp
     });
 
     if (!otpRecord) {
@@ -307,6 +303,17 @@ export const verifyForgotPasswordOTP = async (req, res) => {
       });
     }
 
+    // jwt.sign(
+    //   { email:  email },
+    //   process.env.JWT_SECRET,
+    //   {expiresIn: '15m'},
+    //   (err, token) => {
+    //     if (err) throw err;
+    //     res.cookie('resetToken', resetToken, { sameSite: 'none', secure: true }).json({
+          
+    //     });
+    //   }
+    // );
     // OTP is valid - generate a temporary token for password reset
     const resetToken = jwt.sign(
       { email },
@@ -316,12 +323,17 @@ export const verifyForgotPasswordOTP = async (req, res) => {
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
-
+    delete req.session.tempuser;
+    req.session.tempuser ={
+      email,
+      resetToken
+    }
     res.status(200).json({
+      status:true,
       message: 'OTP verified successfully',
       resetToken
     });
-
+    
   } catch (err) {
     console.error('OTP verification error:', err);
     res.status(500).json({
@@ -332,8 +344,9 @@ export const verifyForgotPasswordOTP = async (req, res) => {
 
 
 export const resetPassword = async (req, res) => {
-  const { newPassword, resetToken } = req.body;
-
+  const { newPassword } = req.body;
+  const resetToken= req.session.tempuser.resetToken;
+  console.log(resetToken,newPassword);
   if (!resetToken || !newPassword) {
     return res.status(400).json({
       message: 'Missing required fields'
@@ -344,7 +357,7 @@ export const resetPassword = async (req, res) => {
     // Verify reset token
     const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
     const email = decoded.email;
-
+    console.log(email,newPassword);
     // Check password strength
     if (newPassword.length < 6) {
       return res.status(400).json({
@@ -372,7 +385,7 @@ export const resetPassword = async (req, res) => {
     }
 
     // Clear reset email from session
-    delete req.session.resetEmail;
+    delete req.session.tempUser;
 
     res.status(200).json({
       message: 'Password reset successfully'
@@ -393,7 +406,7 @@ export const resetPassword = async (req, res) => {
 
 
 export const resendForgotPasswordOTP = async (req, res) => {
-  const email = req.session.resetEmail;
+  const email =  req.session.tempUser.email;
 
   if (!email) {
     return res.status(400).json({
@@ -419,11 +432,10 @@ export const resendForgotPasswordOTP = async (req, res) => {
     });
 
     // Send new OTP
-    await sendMail(
+    await sendforgototp(
       email,
-      otp,
-      'Password Reset OTP',
-      `Your new OTP for password reset is: ${otp}. This OTP will expire in 10 minutes.`
+      otp
+      
     );
 
     res.status(200).json({

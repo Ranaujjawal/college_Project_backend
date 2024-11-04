@@ -18,10 +18,10 @@ router.route('/register').post(upload.fields([
 router.route('/verifyotp').post(verifyOTPAndRegister);
 router.route('/resendregisterotp').post(resendOTP);
 router.route('/logout').post(logout);
-router.post('/forgotPassword',initiateForgotPassword);
-router.post('/verifyforgototppassword',verifyForgotPasswordOTP);
-router.post('/resendforgototp',resendForgotPasswordOTP);
-router.post('/resetpassword',resetPassword);
+router.route('/forgotPassword').post(initiateForgotPassword);
+router.route('/verifyforgototppassword').post(verifyForgotPasswordOTP);
+router.route('/resendforgototp').post(resendForgotPasswordOTP);
+router.route('/resetpassword').post(resetPassword);
 router.patch('/rating/:userId', authenticateToken, updateUserRating);
 router.route('/workers').post(authenticateToken,getWorkers);
 export default router;

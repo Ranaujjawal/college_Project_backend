@@ -26,6 +26,20 @@ var transporter = nodemailer.createTransport({
      }
   };
 
+  const sendforgototp =  async (email,otp) =>{
+    try {
+     await transporter.sendMail({
+      from: '"final year project" <project.3.lnu@gmail.com>', // sender address
+      to: email, // list of receivers
+      subject: "otp for registration", // Subject line
+      text: "Hi, OTP for Forgot password is :" + otp, 
+    });
+
+    } catch (e) {
+     console.log("error sending otp try after sometime ",e)
+    }
+ };
+
 
 const sendNewMessageNotification = async (recipientEmail, senderName) => {
   await sendMail({
@@ -38,4 +52,4 @@ const sendNewMessageNotification = async (recipientEmail, senderName) => {
     `
   });
 };
-export {sendMail,sendNewMessageNotification}
+export {sendMail,sendNewMessageNotification,sendforgototp};
