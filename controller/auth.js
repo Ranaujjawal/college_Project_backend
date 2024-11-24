@@ -125,6 +125,7 @@ export const register = async (req, res) => {
 
 
 export const verifyOTPAndRegister = async (req, res) => {
+  console.log(req.session);
   const { otp } = req.body;
   const tempUser = req.session.tempUser;
  console.log("temp user : ",tempUser)
@@ -204,7 +205,7 @@ export const verifyOTPAndRegister = async (req, res) => {
 
 export const resendOTP = async (req, res) => {
   const tempUser = req.session.tempUser;
-
+  console.log(req.session);
   if (!tempUser) {
     return res.status(400).json({
       message: 'Registration session expired. Please start over.'
@@ -250,6 +251,7 @@ export const logout = (req, res) => {
 export const initiateForgotPassword = async (req, res) => {
   const { email } = req.body;
  // console.log(email);
+ console.log(req.session);
   try {
     // Check if user exists
     const user = await User.findOne({ email });
