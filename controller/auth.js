@@ -6,7 +6,7 @@ import { sendMail,sendforgototp } from '../config/emailcondig.js';
 import { otpGeneratot } from '../config/otpgenerator.js';
 import {uploadonCloudinary} from '../config/cloudinary.js'
 import dotenv from 'dotenv';
-
+import mongoose from 'mongoose'
 dotenv.config();
 
 
@@ -40,22 +40,29 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
+  //console.log(req.body);
   try {
+    const normalizedBody = Object.assign({}, req.body);
     const { 
       name, 
       email, 
       password, 
-      location, 
+      location: rawLocation, 
       role = 'customer', 
       profession = 'none',
-      hourlyRate = 0 
-    } = req.body;
+      hourlyRate = 0 ,
+    } = normalizedBody;
+    const location = {
+      description: rawLocation.description,
+      coordinates: rawLocation.coordinates.map(coord => parseFloat(coord)), // Convert strings to numbers
+    };
+
     //console.log("hello",name,email,password,location,role,profession);
 
     const existingUser = await User.findOne({email});
 
     if (existingUser) {
-      console.log("user exist");
+     // console.log("user exist");
       return res.status(400).json({
         message: 'User with this email or username already exists'
       });
@@ -133,7 +140,7 @@ export const verifyOTPAndRegister = async (req, res) => {
     });
 
     if (!otpRecord || otpRecord.otp!=otp) {
-      console.log("userotp",otp,"databaseotp",otpRecord.otp);
+      //console.log("userotp",otp,"databaseotp",otpRecord.otp);
       return res.status(400).json({
         message: 'Invalid OTP or OTP expired'
       });
@@ -142,12 +149,17 @@ export const verifyOTPAndRegister = async (req, res) => {
     
     const hashedPassword = await bcrypt.hash(tempUser.password, 10);
 
-  
+    const loc = {
+      type: "Point",
+      coordinates: tempUser.location.coordinates, // [longitude, latitude]
+    };
+
     const createdUser = await User.create({
       name: tempUser.name,
       email: tempUser.email,
       password: hashedPassword,
-      location: tempUser.location,
+      location: { description: tempUser.location.description, coordinates: tempUser.location.coordinates },
+      loc: loc,
       role: tempUser.role,
       profession: tempUser.profession,
       hourlyRate: tempUser.hourlyRate,
@@ -284,7 +296,7 @@ export const initiateForgotPassword = async (req, res) => {
 export const verifyForgotPasswordOTP = async (req, res) => {
   const { otp } = req.body;
   const email =  req.session.tempuser.email;
-  console.log(email,otp)
+ // console.log(email,otp)
   if (!email) {
     return res.status(400).json({
       message: 'Password reset session expired. Please start over.'
@@ -346,7 +358,7 @@ export const verifyForgotPasswordOTP = async (req, res) => {
 export const resetPassword = async (req, res) => {
   const { newPassword } = req.body;
   const resetToken= req.session.tempuser.resetToken;
-  console.log(resetToken,newPassword);
+ // console.log(resetToken,newPassword);
   if (!resetToken || !newPassword) {
     return res.status(400).json({
       message: 'Missing required fields'
@@ -451,8 +463,7 @@ export const resendForgotPasswordOTP = async (req, res) => {
 };
 
 export const updateUserRating = async (req, res) => {
-  const { userId } = req.params;
-  const { rating } = req.body;
+  const { userId,rating } = req.body;
   
   try {
     if (rating < 0 || rating > 5) {
@@ -485,6 +496,7 @@ export const updateUserRating = async (req, res) => {
     );
 
     res.status(200).json({
+      success:true,
       message: 'Rating updated successfully',
       user: updatedUser
     });
@@ -499,46 +511,78 @@ export const updateUserRating = async (req, res) => {
 
 
 export const getWorkers = async (req, res) => {
-  const ourUserId = req.userData.userId; 
-  try {
-    const {
-      location,
-      minRating,
-      maxPrice,
-      profession,
-      sortBy
-    } = req.query;
+  
+  const ourUserId = req.userData.userId;
 
-    let query = { 
-      role: 'worker', 
-      _id: { $ne: ourUserId }
+  try {
+    const data = req.body;
+
+    let rawLocation = data.params.location;
+    let minRating = data.params.minRating;
+    let maxPrice = data.params.maxPrice;
+    let profession = data.params.profession;
+    let radius = data.params.radius;
+    let sortBy = data.params.sortBy;
+
+    let location = "";
+    if (rawLocation && rawLocation.coordinates) {
+      location = {
+        description: rawLocation.description || "Unknown Location",
+        coordinates: rawLocation.coordinates.map((coord) => parseFloat(coord)),
+      };
+
+      if (
+        !location.coordinates ||
+        location.coordinates.length !== 2 ||
+        isNaN(location.coordinates[0]) ||
+        isNaN(location.coordinates[1])
+      ) {
+       // console.log("Invalid or missing coordinates");
+        location = null; // Reset location for fallback
+      }
+    }
+
+    let query = {
+      role: "worker",
+      _id: { $ne: ourUserId },
     };
 
-    // Add filters if provided
-    if (location) {
-      query.location = { $regex: location, $options: 'i' };
-    }
     if (minRating) {
       query.rating = { $gte: Number(minRating) };
     }
     if (maxPrice) {
       query.hourlyRate = { $lte: Number(maxPrice) };
     }
-    if (profession && profession !== 'all') {
+    if (profession && profession !== "all") {
       query.profession = profession;
     }
 
-    
+    if (location && location.coordinates) {
+      const point = {
+        type: "Point",
+        coordinates: location.coordinates,
+      };
+  
+      query.loc = {
+        $near: {
+          $geometry: point,
+          $maxDistance: radius * 1000, // Convert radius to meters
+        },
+      };
+    } else {
+      //console.log("Empty coordinates, skipping geospatial query.");
+    }
+
     let sort = {};
     if (sortBy) {
       switch (sortBy) {
-        case 'rating':
+        case "rating":
           sort = { rating: -1 };
           break;
-        case 'price_low':
+        case "price_low":
           sort = { hourlyRate: 1 };
           break;
-        case 'price_high':
+        case "price_high":
           sort = { hourlyRate: -1 };
           break;
         default:
@@ -546,22 +590,17 @@ export const getWorkers = async (req, res) => {
       }
     }
 
-    
-    const workers = await User.find(query)
-      .select('-password')
-      .sort(sort)
-      .lean();
+    const workers = await User.find(query).select("-password").sort(sort).lean();
 
-    
     res.status(200).json({
+      success:true,
       count: workers.length,
-      workers
+      workers,
     });
-
   } catch (err) {
-    console.error('Get workers error:', err);
+    console.error("Get workers error:", err);
     res.status(500).json({
-      message: 'Error fetching workers'
+      message: "Error fetching workers",
     });
   }
 };

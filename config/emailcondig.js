@@ -18,7 +18,20 @@ var transporter = nodemailer.createTransport({
        from: '"final year project" <project.3.lnu@gmail.com>', // sender address
        to: email, // list of receivers
        subject: "otp for registration", // Subject line
-       text: "Hi, Thank you for registring with us your OTP for registeration is :" + otp, 
+       html: `
+        <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2 style="color: #4CAF50;">Hello, ${email}!</h2>
+            <p>Your single-use code is:</p>
+            <h1 style="color: #FF5733; font-size: 2rem;">${otp}</h1>
+            <p>
+                If you didn't request this code, you can safely ignore this email.
+                Someone else might have typed your email address by mistake.
+            </p>
+            <br />
+            <p>Thanks,</p>
+            <p><strong>The Near.in Team</strong></p>
+        </div>
+    `,
      });
  
      } catch (e) {
@@ -31,9 +44,22 @@ var transporter = nodemailer.createTransport({
      await transporter.sendMail({
       from: '"final year project" <project.3.lnu@gmail.com>', // sender address
       to: email, // list of receivers
-      subject: "otp for registration", // Subject line
-      text: "Hi, OTP for Forgot password is :" + otp, 
-    });
+      subject: "otp for Password Reset", // Subject line
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+            <h2 style="color: #4CAF50;">Hello, ${email}!</h2>
+            <p>Your single-use code is:</p>
+            <h1 style="color: #FF5733; font-size: 2rem;">${otp}</h1>
+            <p>
+                If you didn't request  password reset, you can safely ignore this email.
+                Someone else might have typed your email address by mistake.
+            </p>
+            <br />
+            <p>Thanks,</p>
+            <p><strong>The Near.in Team</strong></p>
+        </div>
+    `,
+     });
 
     } catch (e) {
      console.log("error sending otp try after sometime ",e)

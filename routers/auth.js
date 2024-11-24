@@ -22,6 +22,6 @@ router.route('/forgotPassword').post(initiateForgotPassword);
 router.route('/verifyforgototppassword').post(verifyForgotPasswordOTP);
 router.route('/resendforgototp').post(resendForgotPasswordOTP);
 router.route('/resetpassword').post(resetPassword);
-router.patch('/rating/:userId', authenticateToken, updateUserRating);
+router.route('/rating/update').post(authenticateToken, updateUserRating);
 router.route('/workers').post(authenticateToken,getWorkers);
 export default router;

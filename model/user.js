@@ -18,8 +18,25 @@ const userSchema = new mongoose.Schema({
     required: true
   },
   location: {
-    type: String,
-    required: true
+    description: {
+      type: String,
+      required: true,
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: true,
+    },
+  },
+  loc:{
+    type: {
+      type: String, // Required by GeoJSON
+      enum: ['Point'], // Must be "Point"
+      required: true,
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: true,
+    }
   },
   role: {
     type: String,
@@ -52,10 +69,16 @@ const userSchema = new mongoose.Schema({
   pastChats: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  isVerified:{
+    type: Boolean,
+    default : false
+  }
 },{
   timestamps: true
 });
 
+
+userSchema.index({ loc: '2dsphere' });
 
 export const  User = mongoose.model('User', userSchema);

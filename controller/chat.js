@@ -3,7 +3,7 @@ import { User } from '../model/user.js';
 
 export const addusechathistory = async (req,res)=>{
   const { cardid} = req.body;
-  console.log(req.body);
+ // console.log(req.body);
   const ourUserId = req.userData.userId;
   try {
     await User.findByIdAndUpdate(cardid, {
@@ -24,9 +24,9 @@ export const addusechathistory = async (req,res)=>{
 
 export const pastchattings = async (req, res) => {
   const ourUserId = req.userData.userId; 
-console.log(ourUserId);
+//console.log(ourUserId);
   try {
-    console.log("i am called");
+    //console.log("i am called");
     
     const currentUser = await User.findById(ourUserId).select('pastChats');
     
