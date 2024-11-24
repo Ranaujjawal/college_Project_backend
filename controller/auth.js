@@ -12,6 +12,7 @@ dotenv.config();
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  console.log(req.body)
   try {
     const foundUser = await User.findOne({ email });
     if (!foundUser) {
@@ -40,7 +41,7 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  //console.log(req.body);
+  console.log(req.body);
   try {
     const normalizedBody = Object.assign({}, req.body);
     const { 
@@ -126,7 +127,7 @@ export const register = async (req, res) => {
 export const verifyOTPAndRegister = async (req, res) => {
   const { otp } = req.body;
   const tempUser = req.session.tempUser;
-
+ console.log(tempUser)
   if (!tempUser) {
     return res.status(400).json({
       message: 'Registration session expired. Please start over.'
@@ -170,7 +171,7 @@ export const verifyOTPAndRegister = async (req, res) => {
     await OTP.deleteOne({ _id: otpRecord._id });
 
    
-    delete req.session.tempUser;
+    req.session.tempUser.destroy();
 
    
     jwt.sign(
