@@ -8,7 +8,11 @@ import authRoutes from './routers/auth.js';
 import messageRoutes from './routers/chat.js';
 import userRoutes from './routers/user.js';
 import { setupWebSocket } from './controller/websocket.js';
-import session from 'express-session';
+import RedisStore from "connect-redis"
+import session from "express-session"
+import {createClient} from "redis"
+// import Redis from 'ioredis'
+import Redis from 'redis'
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import dotenv from 'dotenv'
@@ -18,11 +22,32 @@ const app = express();
 
 
 connectDB();
+let redisClient = createClient({
+  password: process.env.REDIS_PASSWORD,
+  socket:{
+  host: process.env.REDIS_HOST,
+  port: process.env.REDIS_PORT,
+   }
+  })
+  
+redisClient.connect().catch(console.error)
+redisClient.on('connect'     , () => console.log('connect'));
+redisClient.on('ready'       , () => console.log('ready'));
+// redisClient.ping((err, res) => {
+//   if (err) console.error('Redis connection error: ---------------------------------------------------------------', err);
+//   else console.log('Redis is working:', res); // Should print "PONG"
+// });
+// Initialize store.
+redisClient.ping()
+let redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "myapp:",
+})
 
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:3000';
+const allowedOrigin = process.env.CLIENT_URL;
 
 
-
+redisClient.on('error', err => console.log('Redis Client Error', err));
 // Middleware
 app.use('/uploads', express.static(path.join(__dirname, '..', '/uploads/')));
 app.use(express.json());
@@ -31,12 +56,15 @@ app.use(cors({
   origin: allowedOrigin,
   credentials: true, //process.env.CLIENT_URL
 }));
-app.use(session({
-  secret: 'your-secret-key', 
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false } 
-}));
+app.use(
+  session({
+    store: redisStore,
+    secret: 'your_secret_key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } 
+  })
+);
 
 
 // Routes
@@ -52,3 +80,5 @@ const server = app.listen(process.env.PORT || 4040, () => {
 
 // Setup WebSocket
 const wss = setupWebSocket(server);
+//console.log(wss);
+ 
