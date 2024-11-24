@@ -104,7 +104,7 @@ export const register = async (req, res) => {
       hourlyRate: role === 'worker' ? hourlyRate : 0,
       avatar:avatarurl
     };
-
+    await req.session.save();
     req.session.cookie.expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     // Send OTP to user's email
     await sendMail(email, otp);
@@ -280,6 +280,7 @@ export const initiateForgotPassword = async (req, res) => {
     req.session.tempuser ={
       email
     }
+    await req.session.save();
     res.status(200).json({
       status:true,
       message: 'Password reset OTP has been sent to your email'
