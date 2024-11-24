@@ -127,7 +127,7 @@ export const register = async (req, res) => {
 export const verifyOTPAndRegister = async (req, res) => {
   const { otp } = req.body;
   const tempUser = req.session.tempUser;
- console.log(tempUser)
+ console.log("temp user : ",tempUser)
   if (!tempUser) {
     return res.status(400).json({
       message: 'Registration session expired. Please start over.'
