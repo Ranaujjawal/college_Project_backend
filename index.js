@@ -43,15 +43,21 @@ app.use(cors({
 }));
 app.use(
   session({
-    store: redisStore,
-    secret: 'your_secret_key',
+    secret: 'your-secret-key', 
     resave: false,
-    saveUninitialized: false,
-    cookie: { 
-      
-      secure: false } 
+    saveUninitialized: true,
+    cookie: { secure: false } 
   })
 );
+// session({
+//   store: redisStore,
+//   secret: 'your_secret_key',
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: { 
+    
+//     secure: false } 
+// })
 
 
 // Routes
