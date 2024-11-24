@@ -22,32 +22,17 @@ const app = express();
 
 
 connectDB();
-let redisClient = createClient({
-  password: process.env.REDIS_PASSWORD,
-  socket:{
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT,
-   }
-  })
+let redisClient = createClient()
   
-redisClient.connect().catch(console.error)
-redisClient.on('connect'     , () => console.log('connect'));
-redisClient.on('ready'       , () => console.log('ready'));
-// redisClient.ping((err, res) => {
-//   if (err) console.error('Redis connection error: ---------------------------------------------------------------', err);
-//   else console.log('Redis is working:', res); // Should print "PONG"
-// });
-// Initialize store.
-redisClient.ping()
+
 let redisStore = new RedisStore({
-  client: redisClient,
-  prefix: "myapp:",
+  client: redisClient
 })
 
 const allowedOrigin = process.env.CLIENT_URL;
 
 
-redisClient.on('error', err => console.log('Redis Client Error', err));
+
 // Middleware
 app.use('/uploads', express.static(path.join(__dirname, '..', '/uploads/')));
 app.use(express.json());
@@ -62,7 +47,9 @@ app.use(
     secret: 'your_secret_key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } 
+    cookie: { 
+      
+      secure: false } 
   })
 );
 

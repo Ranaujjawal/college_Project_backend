@@ -419,6 +419,7 @@ export const resetPassword = async (req, res) => {
 
 
 export const resendForgotPasswordOTP = async (req, res) => {
+  try {
   const email =  req.session.tempUser.email;
 
   if (!email) {
@@ -427,7 +428,7 @@ export const resendForgotPasswordOTP = async (req, res) => {
     });
   }
 
-  try {
+  
     // Delete existing OTP
     await OTP.deleteOne({ 
       email,
@@ -464,9 +465,10 @@ export const resendForgotPasswordOTP = async (req, res) => {
 };
 
 export const updateUserRating = async (req, res) => {
+  try {
   const { userId,rating } = req.body;
   
-  try {
+ 
     if (rating < 0 || rating > 5) {
       return res.status(400).json({
         message: 'Rating must be between 0 and 5'
