@@ -67,15 +67,29 @@ var transporter = nodemailer.createTransport({
  };
 
 
-const sendNewMessageNotification = async (recipientEmail, senderName) => {
-  await sendMail({
-    email: recipientEmail,
-    subject: 'New Message Received',
+ const sendmessage =  async (email,message,subject) =>{
+  try {
+   await transporter.sendMail({
+    from: '"final year project" <project.3.lnu@gmail.com>', // sender address
+    to: email, // list of receivers
+    subject: `${subject}`, // Subject line
     html: `
-      <h1>New Message Notification</h1>
-      <p>You have received a new message from ${senderName}.</p>
-      <p>Log in to your account to view and respond to the message.</p>
-    `
-  });
+      <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+          <h2 style="color: #4CAF50;">Hello, ${email}!</h2>
+          <p>Document status:</p>
+          <h1 style="color: #FF5733; font-size: 1rem;">${message}</h1>
+          
+          <br />
+          <p>Thanks,</p>
+          <p><strong>The Near.in Team</strong></p>
+      </div>
+  `,
+   });
+
+  } catch (e) {
+   console.log("error sending otp try after sometime ",e)
+  }
 };
-export {sendMail,sendNewMessageNotification,sendforgototp};
+
+
+export {sendMail,sendmessage,sendforgototp};

@@ -20,7 +20,7 @@ export const setupWebSocket = (server) => {
         }));
       });
     }
-
+/////
     connection.isAlive = true;
 
     // Heartbeat mechanism for WebSocket connections

@@ -7,6 +7,7 @@ import { connectDB } from './config/db.js';
 import authRoutes from './routers/auth.js';
 import messageRoutes from './routers/chat.js';
 import userRoutes from './routers/user.js';
+import adminRoutes from './routers/admin.js'
 import { setupWebSocket } from './controller/websocket.js';
 import RedisStore from "connect-redis"
 import session from "express-session"
@@ -29,16 +30,24 @@ let redisStore = new RedisStore({
   client: client
 })
 
-const allowedOrigin = process.env.CLIENT_URL;
+const allowedOrigins = process.env.CLIENT_URL.split(',');
 
-
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+};
 
 // Middleware
 app.use('/uploads', express.static(path.join(__dirname, '..', '/uploads/')));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: process.env.CLIENT_URL,  // Allow specific client URL from environment variable
+  origin: corsOptions,//process.env.CLIENT_URL,  // Allow specific client URL from environment variable
   credentials: true, //process.env.CLIENT_URL
 }));
 app.set("trust proxy", 1);
@@ -57,12 +66,12 @@ app.set("trust proxy", 1);
 //   })
 // );
 app.use(session({
-  store: redisStore,
+  // store: redisStore,
   secret: 'your_secret_key',
   resave: false,
   saveUninitialized: false,
-  proxy: true, // Required for Heroku & Digital Ocean (regarding X-Forwarded-For)
-  name: 'MyCoolWebAppCookieName', 
+  // proxy: true, // Required for Heroku & Digital Ocean (regarding X-Forwarded-For)
+  // name: 'MyCoolWebAppCookieName', 
   cookie: { 
     httpOnly: false,
     secure: false,
@@ -75,7 +84,7 @@ app.use(session({
 app.use('/auth', authRoutes);
 app.use('/messages', messageRoutes);
 app.use('/users', userRoutes);
-
+app.use('/admin',adminRoutes)
 const server = app.listen(process.env.PORT || 4040, () => {
   console.log(`Server running on port ${process.env.PORT || 4040}`);
 });

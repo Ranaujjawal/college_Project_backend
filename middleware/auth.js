@@ -13,6 +13,23 @@ export const getUserDataFromRequest = (req) => {
     }
   });
 };
+export const AdminauthenticateToken = (req,res,next) => {
+  const token = req.cookies?.tokenadmin;
+  if (!token) {
+    console.log("no token");
+    return res.status(401).json('Authentication required');
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET_ADMIN, {}, (err, userData) => {
+    if (err) {
+      console.log("invalid token",err);
+      return res.status(403).json('Invalid token');
+    
+    }
+    req.userData = userData;
+    next();
+  });
+};
 
 export const authenticateToken = (req, res, next) => {
   const token = req.cookies?.token;

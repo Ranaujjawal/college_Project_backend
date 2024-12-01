@@ -15,7 +15,7 @@ export const login = async (req, res) => {
   console.log(req.body)
   try {
     const foundUser = await User.findOne({ email });
-    if (!foundUser) {
+   if  (!foundUser) {
       return res.status(401).json('User not found');
     }
 
@@ -172,7 +172,7 @@ export const verifyOTPAndRegister = async (req, res) => {
     await OTP.deleteOne({ _id: otpRecord._id });
 
    
-    req.session.tempUser.destroy();
+    delete req.session.tempUser
 
    
     jwt.sign(
