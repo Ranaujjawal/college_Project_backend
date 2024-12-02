@@ -2,17 +2,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import {User} from '../model/user.js';
 import { OTP } from '../model/otp.js';
-import { sendMail,sendforgototp } from '../config/emailcondig.js';
+import { sendMail,sendforgototp,sendmessage } from '../config/emailcondig.js';
 import { otpGeneratot } from '../config/otpgenerator.js';
 import {uploadonCloudinary} from '../config/cloudinary.js'
 import dotenv from 'dotenv';
 import mongoose from 'mongoose'
+import { Redisclient } from '../config/redisclient.js';
 dotenv.config();
 
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
-  console.log(req.body)
+  //console.log(req.body)
   try {
     const foundUser = await User.findOne({ email });
    if  (!foundUser) {
@@ -41,7 +42,7 @@ export const login = async (req, res) => {
 };
 
 export const register = async (req, res) => {
-  console.log(req.body);
+  //console.log(req.body);
   try {
     const normalizedBody = Object.assign({}, req.body);
     const { 
@@ -60,8 +61,13 @@ export const register = async (req, res) => {
 
     //console.log("hello",name,email,password,location,role,profession);
 
+    const exists = await Redisclient.exists(email); 
+    if (exists) { // If the key exists, delete it 
+      await Redisclient.del(email);
+        }
+        
     const existingUser = await User.findOne({email});
-
+    
     if (existingUser) {
      // console.log("user exist");
       return res.status(400).json({
@@ -93,8 +99,8 @@ export const register = async (req, res) => {
 
     
   
-    // Store user data in session or temporary storage
-    req.session.tempUser = {
+   
+   const tempUser = {
       name,
       email,
       password,
@@ -104,11 +110,13 @@ export const register = async (req, res) => {
       hourlyRate: role === 'worker' ? hourlyRate : 0,
       avatar:avatarurl
     };
+    req.session.tempUser;
     await req.session.save();
     req.session.cookie.expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
     // Send OTP to user's email
     await sendMail(email, otp);
-
+    await Redisclient.set(email, JSON.stringify(tempUser),'EX', 15 * 60);
+    res.cookie('registeremail', email, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 15 * 60 * 1000 });
     res.status(200).json({
       success: true,
       message: 'OTP sent to your email. Please verify to complete registration.',
@@ -125,17 +133,27 @@ export const register = async (req, res) => {
 
 
 export const verifyOTPAndRegister = async (req, res) => {
-  console.log(req.session);
-  const { otp } = req.body;
-  const tempUser = req.session.tempUser;
- console.log("temp user : ",tempUser)
-  if (!tempUser) {
-    return res.status(400).json({
-      message: 'Registration session expired. Please start over.'
-    });
-  }
-
   try {
+  //console.log(req.session);
+  const { otp } = req.body;
+  const email = req.cookies.registeremail;
+    if (!email) {
+      return res.status(400).json({ message: 'Session over. Please restart the process.' });
+    }
+  const tempUserData = await Redisclient.get(email);
+  if (!tempUserData) {
+    return res.status(400).json({ message: 'Session expired. Please restart the registration process.' });
+  }
+  const tempUser = JSON.parse(tempUserData);
+ // const tempUser = req.session.tempUser;
+ //console.log("temp user : ",tempUser)
+  // if (!tempUser) {
+  //   return res.status(400).json({
+  //     message: 'Registration session expired. Please start over.'
+  //   });
+  // }
+
+  
     
     const otpRecord = await OTP.findOne({
       email: tempUser.email
@@ -193,7 +211,7 @@ export const verifyOTPAndRegister = async (req, res) => {
           });
       }
     );
-
+    sendmessage(tempUser.email,"Registeration Successful","Registeration")
   } catch (err) {
     console.error('Registration completion error:', err);
     res.status(500).json({
@@ -204,9 +222,9 @@ export const verifyOTPAndRegister = async (req, res) => {
 
 
 export const resendOTP = async (req, res) => {
-  const tempUser = req.session.tempUser;
-  console.log(req.session);
-  if (!tempUser) {
+  const email = req.cookies.registeremail;
+  
+  if (!email) {
     return res.status(400).json({
       message: 'Registration session expired. Please start over.'
     });
@@ -214,19 +232,19 @@ export const resendOTP = async (req, res) => {
 
   try {
     
-    await OTP.deleteOne({ email: tempUser.email });
+    await OTP.deleteOne({ email: email});
 
    
     const otp = otpGeneratot();
 
   
     await OTP.create({
-      email: tempUser.email,
+      email: email,
       otp,
     });
 
    
-    await sendMail(tempUser.email, otp);
+    await sendMail(email, otp);
 
     res.status(200).json({
       success:true,
@@ -251,9 +269,10 @@ export const logout = (req, res) => {
 export const initiateForgotPassword = async (req, res) => {
   const { email } = req.body;
  // console.log(email);
- console.log(req.session);
+ //console.log(req.session);
   try {
     // Check if user exists
+    
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -279,10 +298,7 @@ export const initiateForgotPassword = async (req, res) => {
 
     // Send OTP
     await sendforgototp(email,otp);
-    req.session.tempuser ={
-      email
-    }
-    await req.session.save();
+    res.cookie('resetemail', email, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 15 * 60 * 1000 });
     res.status(200).json({
       status:true,
       message: 'Password reset OTP has been sent to your email'
@@ -299,7 +315,7 @@ export const initiateForgotPassword = async (req, res) => {
 
 export const verifyForgotPasswordOTP = async (req, res) => {
   const { otp } = req.body;
-  const email =  req.session.tempuser.email;
+  const email = req.cookies.resetemail;
  // console.log(email,otp)
   if (!email) {
     return res.status(400).json({
@@ -336,7 +352,7 @@ export const verifyForgotPasswordOTP = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '15m' } // Token expires in 15 minutes
     );
-
+    res.cookie('resetoken', resetToken, { httpOnly: true, secure: true, sameSite: 'none', maxAge: 15 * 60 * 1000 });
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
     delete req.session.tempuser;
@@ -361,7 +377,8 @@ export const verifyForgotPasswordOTP = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   const { newPassword } = req.body;
-  const resetToken= req.session.tempuser.resetToken;
+  const resetToken=req.cookies.resetoken;
+  
  // console.log(resetToken,newPassword);
   if (!resetToken || !newPassword) {
     return res.status(400).json({
@@ -373,7 +390,7 @@ export const resetPassword = async (req, res) => {
     // Verify reset token
     const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
     const email = decoded.email;
-    console.log(email,newPassword);
+    //console.log(email,newPassword);
     // Check password strength
     if (newPassword.length < 6) {
       return res.status(400).json({
@@ -402,11 +419,11 @@ export const resetPassword = async (req, res) => {
 
     // Clear reset email from session
     delete req.session.tempUser;
-
+    sendmessage(email,"Password Reset Successfully","Password Reset")
     res.status(200).json({
       message: 'Password reset successfully'
     });
-
+    
   } catch (err) {
     if (err.name === 'JsonWebTokenError') {
       return res.status(401).json({
@@ -423,7 +440,7 @@ export const resetPassword = async (req, res) => {
 
 export const resendForgotPasswordOTP = async (req, res) => {
   try {
-  const email =  req.session.tempUser.email;
+    const email = req.cookies.resetemail;
 
   if (!email) {
     return res.status(400).json({

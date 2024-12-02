@@ -76,7 +76,7 @@ var transporter = nodemailer.createTransport({
     html: `
       <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
           <h2 style="color: #4CAF50;">Hello, ${email}!</h2>
-          <p>Document status:</p>
+          <p>Activity Status:</p>
           <h1 style="color: #FF5733; font-size: 1rem;">${message}</h1>
           
           <br />
