@@ -202,11 +202,11 @@ export const submitDocuments = async (req, res) => {
       documents: [
         {
           documentType: documentname1,
-          documentUrl: file1.url,
+          documentUrl: file1,
         },
         {
           documentType: documentname2,
-          documentUrl: file2.url,
+          documentUrl: file2,
         },
       ],
       status:'Pending'
