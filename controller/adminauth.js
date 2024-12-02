@@ -185,8 +185,14 @@ export const submitDocuments = async (req, res) => {
       await WrokerVerify.deleteOne({ email: existingVerification.email });
     }
     // Uploading both documents to Cloudinary
-    const file1 = await uploadonCloudinary(req.files.document1[0].path);
-    const file2 = await uploadonCloudinary(req.files.document2[0].path);
+           const file1Buffer = req.files.document1[0].buffer;
+            const file1Result = await uploadonCloudinary(file1Buffer);
+            let file1 =  file1Result.url; // Use Cloudinary's returned URL
+            const file2Buffer = req.files.document2[0].buffer;
+            const file2Result = await uploadonCloudinary(file2Buffer);
+            let file2 =  file2Result.url; // Use Cloudinary's returned URL
+    //const file1 = await uploadonCloudinary(req.files.document1[0].path);
+    //const file2 = await uploadonCloudinary(req.files.document2[0].path);
 
    
     const newVerification = new WrokerVerify({

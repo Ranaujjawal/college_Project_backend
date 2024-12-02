@@ -84,19 +84,25 @@ export const register = async (req, res) => {
       otp,
     });
 
-    let avatarLocalPath="";
-     if(req.files.avatar){  
-      avatarLocalPath =  req.files?.avatar[0]?.path;
-     }
+  //   let avatarLocalPath="";
+  //    if(req.files.avatar){  
+  //     avatarLocalPath =  req.files?.avatar[0]?.path;
+  //    }
    
       
   
-      let avatarimage,avatarurl;
-   if(avatarLocalPath){
-    avatarimage = await uploadonCloudinary(avatarLocalPath);
-    avatarurl=avatarimage.url;
-   }
+  //     let avatarimage,avatarurl;
+  //  if(avatarLocalPath){
+  //   avatarimage = await uploadonCloudinary(avatarLocalPath);
+  //   avatarurl=avatarimage.url;
+  //  }
 
+   let avatarUrl = null;
+        if (req.files && req.files.avatar) {
+            const avatarBuffer = req.files.avatar[0].buffer;
+            const avatarResult = await uploadonCloudinary(avatarBuffer);
+            avatarUrl = avatarResult.url; // Use Cloudinary's returned URL
+        }
     
   
    
@@ -108,7 +114,7 @@ export const register = async (req, res) => {
       role,
       profession: role === 'worker' ? profession : 'none',
       hourlyRate: role === 'worker' ? hourlyRate : 0,
-      avatar:avatarurl
+      avatar:avatarUrl
     };
     req.session.tempUser;
     await req.session.save();
